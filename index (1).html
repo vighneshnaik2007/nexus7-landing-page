@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS-7 | Neural Augmentation System</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root{--cyan:#00f5ff;--green:#00ff88;--red:#ff003c;--dark:#020408;--panel:rgba(0,245,255,0.04);--border:rgba(0,245,255,0.15);--text:#c8e8f0}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--dark);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:18px;overflow-x:hidden;cursor:none}
+
+/* BOOT */
+#boot{position:fixed;inset:0;background:#000;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px}
+#boot.hide{animation:bootFade 0.8s ease forwards}
+@keyframes bootFade{to{opacity:0;pointer-events:none;visibility:hidden}}
+.boot-logo{font-family:'Orbitron',monospace;font-size:clamp(2rem,6vw,4rem);font-weight:900;color:var(--cyan);letter-spacing:8px;text-shadow:0 0 30px var(--cyan);margin-bottom:48px;animation:bFadeIn 0.5s ease 0.2s both}
+.boot-logo span{color:var(--red)}
+@keyframes bFadeIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.boot-terminal{width:100%;max-width:640px;font-family:'Share Tech Mono',monospace;font-size:clamp(0.65rem,1.4vw,0.82rem);letter-spacing:1px}
+.boot-line{display:flex;align-items:center;gap:10px;padding:5px 0;opacity:0;animation:lin 0.1s ease forwards}
+.boot-line .prompt{color:var(--green)}.boot-line .text{color:var(--text)}.boot-line .ok{color:var(--green);margin-left:auto}.boot-line .warn{color:#ff8800;margin-left:auto}
+@keyframes lin{to{opacity:1}}
+.boot-bar-wrap{margin-top:32px;width:100%;max-width:640px;opacity:0;transition:opacity 0.3s}
+.boot-bar-wrap.show{opacity:1}
+.boot-bar-label{font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:3px;color:rgba(200,232,240,0.4);margin-bottom:8px;display:flex;justify-content:space-between}
+.boot-bar{height:2px;background:rgba(0,245,255,0.1);overflow:hidden}
+.boot-fill{height:100%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);width:0%;transition:width 0.05s linear}
+
+/* GLITCH OVERLAY */
+.glitch-overlay{position:fixed;inset:0;z-index:8999;pointer-events:none;opacity:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,245,255,0.03) 2px,rgba(0,245,255,0.03) 4px)}
+.glitch-overlay.flash{animation:glitchFlash 0.4s ease forwards}
+@keyframes glitchFlash{0%{opacity:0}10%{opacity:1;transform:translateX(-3px)}20%{opacity:0;transform:translateX(3px)}30%{opacity:1;transform:translateX(-1px)}50%{opacity:0}60%{opacity:0.5;transform:translateX(2px)}100%{opacity:0;transform:none}}
+
+/* CURSOR */
+.cursor{position:fixed;width:16px;height:16px;border:2px solid var(--cyan);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:all 0.08s ease;mix-blend-mode:screen}
+.cursor-dot{position:fixed;width:4px;height:4px;background:var(--cyan);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%)}
+
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:9000}
+
+#mx{position:fixed;inset:0;z-index:0;opacity:0.12;pointer-events:none}
+#particleCanvas{position:absolute;inset:0;z-index:1;pointer-events:none}
+.gbg{position:fixed;inset:0;z-index:0;opacity:0.04;background-image:linear-gradient(var(--cyan) 1px,transparent 1px),linear-gradient(90deg,var(--cyan) 1px,transparent 1px);background-size:60px 60px}
+.gbg::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 20%,var(--dark) 75%)}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:20px 60px;border-bottom:1px solid var(--border);background:rgba(2,4,8,0.85);backdrop-filter:blur(12px)}
+.nl{font-family:'Orbitron',monospace;font-weight:900;font-size:1.4rem;letter-spacing:4px;color:var(--cyan);text-shadow:0 0 20px var(--cyan)}
+.nl span{color:var(--red)}
+.nm{display:flex;gap:40px;list-style:none}
+.nm a{font-family:'Share Tech Mono',monospace;font-size:0.75rem;letter-spacing:3px;color:var(--text);text-decoration:none;text-transform:uppercase;transition:color 0.3s;position:relative}
+.nm a::after{content:'';position:absolute;bottom:-4px;left:0;width:0;height:1px;background:var(--cyan);transition:width 0.3s}
+.nm a:hover,.nm a.active{color:var(--cyan);text-shadow:0 0 10px rgba(0,245,255,0.5)}
+.nm a.active::after,.nm a:hover::after{width:100%}
+.nc{font-family:'Share Tech Mono',monospace;font-size:0.7rem;letter-spacing:3px;text-transform:uppercase;padding:10px 24px;border:1px solid var(--cyan);color:var(--cyan);background:transparent;cursor:none;transition:all 0.3s;position:relative;overflow:hidden}
+.nc::before{content:'';position:absolute;inset:0;background:var(--cyan);transform:translateX(-100%);transition:transform 0.3s;z-index:-1}
+.nc:hover{color:var(--dark)}.nc:hover::before{transform:translateX(0)}
+
+/* HAMBURGER */
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:none;padding:4px;z-index:200}
+.hamburger span{display:block;width:24px;height:2px;background:var(--cyan);transition:all 0.3s;transform-origin:center}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.mobile-menu{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:rgba(2,4,8,0.97);border-left:1px solid var(--border);z-index:150;padding:100px 40px 40px;transition:right 0.4s ease;backdrop-filter:blur(20px)}
+.mobile-menu.open{right:0}
+.mobile-menu ul{list-style:none;display:flex;flex-direction:column;gap:32px}
+.mobile-menu a{font-family:'Share Tech Mono',monospace;font-size:0.85rem;letter-spacing:4px;color:var(--text);text-decoration:none;text-transform:uppercase;transition:color 0.2s;display:flex;align-items:center;gap:10px}
+.mobile-menu a::before{content:'//';color:var(--cyan);opacity:0.5}
+.mobile-menu a:hover{color:var(--cyan)}
+
+section{position:relative;z-index:1}
+
+/* HERO */
+#hero{min-height:100vh;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:60px;padding:140px 60px 80px;position:relative;overflow:hidden}
+.hg{position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(circle,rgba(0,245,255,0.06) 0%,transparent 70%);top:50%;right:-100px;transform:translateY(-50%);animation:pg 4s ease-in-out infinite;pointer-events:none}
+@keyframes pg{0%,100%{opacity:0.5;transform:translateY(-50%) scale(1)}50%{opacity:1;transform:translateY(-50%) scale(1.08)}}
+.ht{z-index:2}
+.htag{font-family:'Share Tech Mono',monospace;font-size:0.7rem;letter-spacing:4px;color:var(--green);margin-bottom:24px;animation:fiu 0.8s ease both}
+.htitle{font-family:'Orbitron',monospace;font-size:clamp(3rem,6vw,6.5rem);font-weight:900;line-height:0.9;letter-spacing:-2px;margin-bottom:24px;animation:fiu 0.8s ease 0.1s both}
+.htitle .l1{color:#fff;display:block}.htitle .l2{color:var(--cyan);text-shadow:0 0 30px var(--cyan),0 0 60px rgba(0,245,255,0.4);display:block;animation:glitch 3s infinite}
+@keyframes glitch{0%,90%,100%{transform:none;text-shadow:0 0 30px var(--cyan),0 0 60px rgba(0,245,255,0.4)}91%{transform:translate(-3px,0);text-shadow:3px 0 var(--red),-3px 0 var(--green)}92%{transform:translate(3px,0);text-shadow:-3px 0 var(--red),3px 0 var(--green)}93%{transform:translate(-1px,0);text-shadow:0 0 30px var(--cyan)}94%{transform:none}}
+
+/* TYPING TEXT */
+.hsub{font-family:'Rajdhani',sans-serif;font-size:clamp(0.9rem,1.8vw,1.2rem);font-weight:300;color:rgba(200,232,240,0.55);letter-spacing:4px;text-transform:uppercase;margin-bottom:32px;animation:fiu 0.8s ease 0.2s both;min-height:2em}
+.typing-cursor{display:inline-block;width:2px;height:1em;background:var(--cyan);vertical-align:middle;margin-left:2px;animation:blink 0.7s step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+.hdesc{font-size:1rem;line-height:1.8;color:rgba(200,232,240,0.65);margin-bottom:48px;animation:fiu 0.8s ease 0.3s both}
+.hbtn{display:flex;gap:16px;flex-wrap:wrap;animation:fiu 0.8s ease 0.4s both}
+@keyframes fiu{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+
+/* TOOLTIP */
+.tooltip-wrap{position:relative;display:inline-block}
+.tooltip-wrap .tooltip{position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);background:rgba(2,4,8,0.95);border:1px solid var(--cyan);padding:8px 14px;font-family:'Share Tech Mono',monospace;font-size:0.6rem;letter-spacing:2px;color:var(--cyan);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.2s;z-index:10}
+.tooltip-wrap .tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--cyan)}
+.tooltip-wrap:hover .tooltip{opacity:1}
+
+/* CYBORG VISUAL */
+.hv{z-index:2;display:flex;align-items:center;justify-content:center;animation:fiu 0.8s ease 0.3s both}
+.cw{position:relative;width:360px;height:460px}
+.cw svg{width:100%;height:100%;filter:drop-shadow(0 0 20px rgba(0,245,255,0.3))}
+.hr{position:absolute;border-radius:50%;border:1px solid rgba(0,245,255,0.2);animation:rot linear infinite}
+.hr1{width:400px;height:400px;top:30px;left:-20px;animation-duration:25s}
+.hr1::before{content:'';position:absolute;width:8px;height:8px;background:var(--cyan);border-radius:50%;top:-4px;left:50%;transform:translateX(-50%);box-shadow:0 0 12px var(--cyan)}
+.hr2{width:440px;height:440px;top:10px;left:-40px;border-color:rgba(0,255,136,0.1);animation-duration:18s;animation-direction:reverse;border-style:dashed}
+.sl-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,rgba(0,245,255,0.6),transparent);top:0;animation:scan 3s ease-in-out infinite;box-shadow:0 0 8px rgba(0,245,255,0.4)}
+@keyframes scan{0%{top:0;opacity:1}100%{top:100%;opacity:0.2}}
+.hl{position:absolute;font-family:'Share Tech Mono',monospace;font-size:0.55rem;letter-spacing:2px;color:var(--cyan);opacity:0.7}
+.hl::before{content:'';display:inline-block;width:20px;height:1px;background:var(--cyan);vertical-align:middle;margin-right:6px}
+.hl1{top:80px;left:-90px}.hl2{top:200px;left:-100px}
+.hl3{top:80px;right:-90px;text-align:right}.hl3::before{display:none}.hl3::after{content:'';display:inline-block;width:20px;height:1px;background:var(--cyan);vertical-align:middle;margin-left:6px}
+.hl4{top:200px;right:-90px;text-align:right}.hl4::before{display:none}.hl4::after{content:'';display:inline-block;width:20px;height:1px;background:var(--cyan);vertical-align:middle;margin-left:6px}
+@keyframes rot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+.bp{font-family:'Share Tech Mono',monospace;font-size:0.75rem;letter-spacing:4px;text-transform:uppercase;padding:18px 40px;background:var(--cyan);color:var(--dark);border:none;cursor:none;font-weight:bold;transition:all 0.3s;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.bp:hover{background:#fff;box-shadow:0 0 30px rgba(0,245,255,0.6);transform:translateY(-2px)}
+.bs{font-family:'Share Tech Mono',monospace;font-size:0.75rem;letter-spacing:4px;text-transform:uppercase;padding:18px 40px;background:transparent;color:var(--cyan);border:1px solid var(--cyan);cursor:none;transition:all 0.3s;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px))}
+.bs:hover{background:rgba(0,245,255,0.08);box-shadow:0 0 20px rgba(0,245,255,0.2);transform:translateY(-2px)}
+.hscroll{position:absolute;bottom:32px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;animation:fiu 1s ease 1s both}
+.hscroll span{font-family:'Share Tech Mono',monospace;font-size:0.6rem;letter-spacing:4px;color:rgba(200,232,240,0.3)}
+.sline{width:1px;height:50px;background:linear-gradient(to bottom,var(--cyan),transparent);animation:sa 2s ease-in-out infinite}
+@keyframes sa{0%,100%{opacity:0.3;transform:scaleY(1)}50%{opacity:1;transform:scaleY(0.6)}}
+
+/* STATS */
+#stats{padding:80px 60px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--panel)}
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:40px;max-width:1100px;margin:0 auto;text-align:center}
+.si{position:relative}.si::after{content:'';position:absolute;right:0;top:20%;width:1px;height:60%;background:var(--border)}.si:last-child::after{display:none}
+.sn{font-family:'Orbitron',monospace;font-size:clamp(2rem,4vw,3.2rem);font-weight:900;color:var(--cyan);text-shadow:0 0 20px rgba(0,245,255,0.5);display:block}
+.sl2{font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:3px;color:rgba(200,232,240,0.5);text-transform:uppercase;margin-top:6px;display:block}
+
+/* FEATURES */
+#features{padding:120px 60px;max-width:1200px;margin:0 auto}
+.stag{font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:6px;color:var(--green);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.stag::before{content:'';width:30px;height:1px;background:var(--green)}
+.stitle{font-family:'Orbitron',monospace;font-size:clamp(1.8rem,4vw,3rem);font-weight:700;color:#fff;margin-bottom:16px;line-height:1.1}
+.stitle em{color:var(--cyan);font-style:normal;text-shadow:0 0 20px rgba(0,245,255,0.4)}
+.ssub{color:rgba(200,232,240,0.5);font-size:1rem;letter-spacing:2px;margin-bottom:60px;max-width:500px}
+.fg{display:grid;grid-template-columns:repeat(3,1fr);gap:2px}
+.fc{background:var(--panel);border:1px solid var(--border);padding:48px 36px;position:relative;overflow:hidden;transition:all 0.4s}
+.fc::before{content:'';position:absolute;top:0;left:0;width:3px;height:0;background:var(--cyan);transition:height 0.4s}
+.fc:hover{background:rgba(0,245,255,0.06);border-color:rgba(0,245,255,0.3)}.fc:hover::before{height:100%}
+.fi{width:56px;height:56px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;margin-bottom:28px;font-size:1.6rem;position:relative;background:rgba(0,245,255,0.05)}
+.fi::after{content:'';position:absolute;inset:4px;border:1px solid rgba(0,245,255,0.1)}
+.fn{font-family:'Share Tech Mono',monospace;font-size:0.6rem;letter-spacing:3px;color:var(--cyan);opacity:0.5;margin-bottom:12px}
+.fh{font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;color:#fff;margin-bottom:16px;line-height:1.3}
+.fd{font-size:0.95rem;line-height:1.7;color:rgba(200,232,240,0.55)}
+.fs{margin-top:24px;font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:2px;color:var(--green);display:flex;align-items:center;gap:8px}
+.fs::before{content:'';width:20px;height:1px;background:var(--green)}
+
+/* ABOUT */
+#about{padding:120px 60px;background:linear-gradient(to bottom,transparent,rgba(0,245,255,0.02),transparent);border-top:1px solid var(--border)}
+.ai{max-width:1200px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:100px;align-items:center}
+.av{position:relative;height:480px}
+.cr{position:absolute;border-radius:50%;border:1px solid var(--border)}
+.r1{inset:0;animation:rot 20s linear infinite}.r1::before{content:'';position:absolute;width:10px;height:10px;background:var(--cyan);border-radius:50%;top:-5px;left:50%;transform:translateX(-50%);box-shadow:0 0 10px var(--cyan)}
+.r2{inset:40px;border-color:rgba(0,255,136,0.15);animation:rot 14s linear infinite reverse}.r2::before{content:'';position:absolute;width:8px;height:8px;background:var(--green);border-radius:50%;bottom:-4px;left:50%;transform:translateX(-50%);box-shadow:0 0 10px var(--green)}
+.r3{inset:80px;animation:rot 8s linear infinite;border-style:dashed}
+.ac{position:absolute;inset:120px;background:rgba(0,245,255,0.04);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center}
+.acn{font-family:'Orbitron',monospace;font-size:3rem;font-weight:900;color:var(--cyan);text-shadow:0 0 20px var(--cyan);line-height:1}
+.acl{font-family:'Share Tech Mono',monospace;font-size:0.6rem;letter-spacing:3px;color:rgba(200,232,240,0.4);margin-top:6px}
+.at p{font-size:1.05rem;line-height:1.9;color:rgba(200,232,240,0.65);margin-bottom:24px}
+.al{list-style:none;margin-top:32px}
+.al li{font-family:'Share Tech Mono',monospace;font-size:0.75rem;letter-spacing:2px;color:var(--text);padding:14px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.al li::before{content:'▶';color:var(--cyan);font-size:0.5rem}
+
+/* SPECS */
+#specs{padding:120px 60px;max-width:1200px;margin:0 auto}
+.spg{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;margin-top:60px}
+.spr{display:flex;align-items:center;justify-content:space-between;padding:22px 32px;border:1px solid var(--border);background:var(--panel);transition:all 0.3s}
+.spr:hover{background:rgba(0,245,255,0.06);border-color:rgba(0,245,255,0.25)}
+.spk{font-family:'Share Tech Mono',monospace;font-size:0.7rem;letter-spacing:2px;color:rgba(200,232,240,0.5);text-transform:uppercase}
+.spv{font-family:'Orbitron',monospace;font-size:0.85rem;color:var(--cyan);font-weight:700}
+
+/* CTA */
+#cta{padding:160px 60px;text-align:center;position:relative;overflow:hidden;border-top:1px solid var(--border)}
+#cta::before{content:'';position:absolute;width:800px;height:400px;border-radius:50%;background:radial-gradient(ellipse,rgba(0,245,255,0.06) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%)}
+.cw2{font-family:'Share Tech Mono',monospace;font-size:0.65rem;letter-spacing:6px;color:var(--red);text-transform:uppercase;margin-bottom:24px;animation:blk 2s step-end infinite}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:0.3}}
+.ct{font-family:'Orbitron',monospace;font-size:clamp(2rem,5vw,4.5rem);font-weight:900;color:#fff;line-height:1.1;margin-bottom:24px}
+.ct span{color:var(--cyan);text-shadow:0 0 30px var(--cyan)}
+.csub{font-size:1.1rem;color:rgba(200,232,240,0.5);margin-bottom:56px;letter-spacing:2px}
+.cdisc{margin-top:40px;font-family:'Share Tech Mono',monospace;font-size:0.6rem;letter-spacing:2px;color:rgba(200,232,240,0.25);max-width:600px;margin-left:auto;margin-right:auto;line-height:1.8}
+
+/* FOOTER */
+footer{padding:40px 60px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.4);flex-wrap:wrap;gap:20px}
+.fl{font-family:'Orbitron',monospace;font-weight:900;font-size:1rem;letter-spacing:4px;color:var(--cyan)}
+.fl span{color:var(--red)}
+.fc2{font-family:'Share Tech Mono',monospace;font-size:0.6rem;letter-spacing:2px;color:rgba(200,232,240,0.25)}
+.flk{display:flex;gap:24px;list-style:none}
+.flk a{font-family:'Share Tech Mono',monospace;font-size:0.6rem;letter-spacing:2px;color:rgba(200,232,240,0.35);text-decoration:none;transition:color 0.2s}
+.flk a:hover{color:var(--cyan)}
+.social-icons{display:flex;gap:16px;align-items:center}
+.sicon{width:36px;height:36px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:rgba(200,232,240,0.4);text-decoration:none;font-size:0.85rem;transition:all 0.3s;position:relative;overflow:hidden}
+.sicon::before{content:'';position:absolute;inset:0;background:var(--cyan);transform:scale(0);transition:transform 0.3s;z-index:-1;border-radius:50%}
+.sicon:hover{color:var(--dark);border-color:var(--cyan);box-shadow:0 0 15px rgba(0,245,255,0.4)}
+.sicon:hover::before{transform:scale(1.5)}
+
+.reveal{opacity:0;transform:translateY(40px);transition:opacity 0.7s ease,transform 0.7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+@media(max-width:1024px){#hero{grid-template-columns:1fr;text-align:center}.hv{display:none}.hbtn{justify-content:center}}
+@media(max-width:900px){
+  nav{padding:16px 24px}
+  .nm{display:none}
+  .hamburger{display:flex}
+  #features,#about,#specs,#stats,#cta,footer{padding-left:24px;padding-right:24px}
+  .fg{grid-template-columns:1fr}.sg{grid-template-columns:repeat(2,1fr)}
+  .ai{grid-template-columns:1fr;gap:60px}.av{height:320px}
+  .spg{grid-template-columns:1fr}
+  footer{flex-direction:column;align-items:center;text-align:center}
+  .flk{justify-content:center}.si::after{display:none}
+  .social-icons{justify-content:center}
+}
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="boot-logo">NEXUS<span>-7</span></div>
+  <div class="boot-terminal" id="bterm"></div>
+  <div class="boot-bar-wrap" id="bbarwrap">
+    <div class="boot-bar-label"><span>NEURAL SYNC PROGRESS</span><span id="bpct">0%</span></div>
+    <div class="boot-bar"><div class="boot-fill" id="bfill"></div></div>
+  </div>
+</div>
+
+<div class="glitch-overlay" id="glitchOverlay"></div>
+<div class="cursor" id="cursor"></div>
+<div class="cursor-dot" id="cdot"></div>
+<canvas id="mx"></canvas>
+<div class="gbg"></div>
+
+<!-- MOBILE MENU -->
+<div class="mobile-menu" id="mobileMenu">
+  <ul>
+    <li><a href="#features" class="mob-link">Augments</a></li>
+    <li><a href="#about" class="mob-link">System</a></li>
+    <li><a href="#specs" class="mob-link">Specs</a></li>
+    <li><a href="#cta" class="mob-link">Initiate</a></li>
+  </ul>
+</div>
+
+<nav>
+  <div class="nl">NEXUS<span>-7</span></div>
+  <ul class="nm">
+    <li><a href="#hero" class="nav-link" data-section="hero">Home</a></li>
+    <li><a href="#features" class="nav-link" data-section="features">Augments</a></li>
+    <li><a href="#about" class="nav-link" data-section="about">System</a></li>
+    <li><a href="#specs" class="nav-link" data-section="specs">Specs</a></li>
+    <li><a href="#cta" class="nav-link" data-section="cta">Initiate</a></li>
+  </ul>
+  <div style="display:flex;align-items:center;gap:16px">
+    <button class="nc">Get Access</button>
+    <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+  </div>
+</nav>
+
+<section id="hero">
+  <div class="hg"></div>
+  <canvas id="particleCanvas"></canvas>
+  <div class="ht">
+    <p class="htag">// Neural Augmentation System v7.0 — Online</p>
+    <h1 class="htitle"><span class="l1">BECOME</span><span class="l2">NEXUS-7</span></h1>
+    <p class="hsub"><span id="typedText"></span><span class="typing-cursor"></span></p>
+    <p class="hdesc">Merge human consciousness with machine precision. NEXUS-7 is a cortical implant that rewires your brain's interface layer — delivering superhuman cognition, reflexes, and connectivity.</p>
+    <div class="hbtn">
+      <button class="bp" id="btnAug">Begin Augmentation</button>
+      <button class="bs" id="btnSpec">View Specifications</button>
+    </div>
+  </div>
+  <div class="hv">
+    <div class="cw">
+      <div class="hr hr1"></div><div class="hr hr2"></div>
+      <div class="sl-scan"></div>
+      <span class="hl hl1">CORTEX LINK</span><span class="hl hl2">SYNC: 99.7%</span>
+      <span class="hl hl3">REFLEX NET</span><span class="hl hl4">ACTIVE</span>
+      <svg viewBox="0 0 300 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="hg2" cx="50%" cy="40%" r="50%"><stop offset="0%" stop-color="#00f5ff" stop-opacity="0.15"/><stop offset="100%" stop-color="#020408" stop-opacity="0"/></radialGradient>
+          <filter id="gw"><feGaussianBlur stdDeviation="3" result="cb"/><feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="gw2"><feGaussianBlur stdDeviation="1.5" result="cb"/><feMerge><feMergeNode in="cb"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <ellipse cx="150" cy="160" rx="120" ry="140" fill="url(#hg2)"/>
+        <rect x="126" y="220" width="48" height="50" rx="4" fill="#0a1a1f" stroke="#00f5ff" stroke-width="0.8" opacity="0.9"/>
+        <rect x="134" y="225" width="8" height="40" rx="2" fill="#00f5ff" opacity="0.2"/>
+        <rect x="148" y="225" width="8" height="40" rx="2" fill="#00f5ff" opacity="0.2"/>
+        <rect x="162" y="225" width="8" height="40" rx="2" fill="#00f5ff" opacity="0.2"/>
+        <path d="M60 280 Q80 265 126 270 L126 380 Q80 375 60 350 Z" fill="#0a1a1f" stroke="#00f5ff" stroke-width="0.8" opacity="0.9"/>
+        <path d="M240 280 Q220 265 174 270 L174 380 Q220 375 240 350 Z" fill="#0a1a1f" stroke="#00f5ff" stroke-width="0.8" opacity="0.9"/>
+        <rect x="126" y="270" width="48" height="110" rx="4" fill="#0a1a1f" stroke="#00f5ff" stroke-width="0.8" opacity="0.9"/>
+        <line x1="150" y1="280" x2="150" y2="370" stroke="#00f5ff" stroke-width="0.5" opacity="0.4"/>
+        <line x1="130" y1="300" x2="170" y2="300" stroke="#00f5ff" stroke-width="0.5" opacity="0.4"/>
+        <line x1="130" y1="320" x2="170" y2="320" stroke="#00f5ff" stroke-width="0.5" opacity="0.4"/>
+        <line x1="130" y1="340" x2="170" y2="340" stroke="#00f5ff" stroke-width="0.5" opacity="0.4"/>
+        <circle cx="150" cy="300" r="4" fill="#00f5ff" opacity="0.6" filter="url(#gw2)"/>
+        <circle cx="150" cy="320" r="4" fill="#00ff88" opacity="0.6" filter="url(#gw2)"/>
+        <circle cx="150" cy="340" r="4" fill="#00f5ff" opacity="0.6" filter="url(#gw2)"/>
+        <ellipse cx="90" cy="282" rx="28" ry="18" fill="#0d2028" stroke="#00f5ff" stroke-width="0.8"/>
+        <ellipse cx="210" cy="282" rx="28" ry="18" fill="#0d2028" stroke="#00f5ff" stroke-width="0.8"/>
+        <line x1="70" y1="282" x2="110" y2="282" stroke="#00f5ff" stroke-width="0.5" opacity="0.5"/>
+        <line x1="190" y1="282" x2="230" y2="282" stroke="#00f5ff" stroke-width="0.5" opacity="0.5"/>
+        <ellipse cx="150" cy="130" rx="72" ry="85" fill="#0a1a1f" stroke="#00f5ff" stroke-width="1" opacity="0.95"/>
+        <path d="M78 110 Q65 115 62 140 Q65 160 78 165" fill="none" stroke="#00f5ff" stroke-width="0.8" opacity="0.7"/>
+        <path d="M222 110 Q235 115 238 140 Q235 160 222 165" fill="none" stroke="#00f5ff" stroke-width="0.8" opacity="0.7"/>
+        <line x1="80" y1="130" x2="100" y2="130" stroke="#00f5ff" stroke-width="0.4" opacity="0.4"/>
+        <line x1="200" y1="130" x2="220" y2="130" stroke="#00f5ff" stroke-width="0.4" opacity="0.4"/>
+        <ellipse cx="120" cy="130" rx="20" ry="12" fill="#001a20" stroke="#00f5ff" stroke-width="1"/>
+        <ellipse cx="180" cy="130" rx="20" ry="12" fill="#001a20" stroke="#00f5ff" stroke-width="1"/>
+        <circle cx="120" cy="130" r="6" fill="#00f5ff" opacity="0.9" filter="url(#gw)"><animate attributeName="opacity" values="0.9;0.4;0.9" dur="2.5s" repeatCount="indefinite"/></circle>
+        <circle cx="180" cy="130" r="6" fill="#00f5ff" opacity="0.9" filter="url(#gw)"><animate attributeName="opacity" values="0.9;0.4;0.9" dur="2.5s" begin="0.3s" repeatCount="indefinite"/></circle>
+        <circle cx="120" cy="130" r="2" fill="#fff" opacity="0.95"/><circle cx="180" cy="130" r="2" fill="#fff" opacity="0.95"/>
+        <path d="M142 148 L150 170 L158 148 Z" fill="#0d2028" stroke="#00f5ff" stroke-width="0.6" opacity="0.7"/>
+        <rect x="118" y="175" width="64" height="22" rx="4" fill="#0d2028" stroke="#00f5ff" stroke-width="0.8"/>
+        <line x1="118" y1="186" x2="182" y2="186" stroke="#00f5ff" stroke-width="0.5" opacity="0.5"/>
+        <rect x="124" y="179" width="10" height="8" rx="1" fill="#00f5ff" opacity="0.15"/>
+        <rect x="140" y="179" width="10" height="8" rx="1" fill="#00f5ff" opacity="0.15"/>
+        <rect x="156" y="179" width="10" height="8" rx="1" fill="#00f5ff" opacity="0.15"/>
+        <rect x="172" y="179" width="6" height="8" rx="1" fill="#00f5ff" opacity="0.15"/>
+        <rect x="130" y="48" width="40" height="8" rx="2" fill="#0d2028" stroke="#00f5ff" stroke-width="0.6" opacity="0.8"/>
+        <line x1="150" y1="48" x2="150" y2="30" stroke="#00f5ff" stroke-width="0.5" opacity="0.4"/>
+        <circle cx="150" cy="28" r="4" fill="#00f5ff" opacity="0.6" filter="url(#gw2)"><animate attributeName="opacity" values="0.6;1;0.6" dur="1.5s" repeatCount="indefinite"/></circle>
+        <circle cx="108" cy="95" r="3" fill="#00ff88" opacity="0.7" filter="url(#gw2)"/>
+        <circle cx="192" cy="95" r="3" fill="#00ff88" opacity="0.7" filter="url(#gw2)"/>
+        <circle cx="100" cy="155" r="2.5" fill="#ff003c" opacity="0.8" filter="url(#gw2)"><animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" repeatCount="indefinite"/></circle>
+        <circle cx="200" cy="155" r="2.5" fill="#ff003c" opacity="0.8" filter="url(#gw2)"><animate attributeName="opacity" values="0.8;0.2;0.8" dur="1s" begin="0.5s" repeatCount="indefinite"/></circle>
+      </svg>
+    </div>
+  </div>
+  <div class="hscroll"><span>Scroll</span><div class="sline"></div></div>
+</section>
+
+<section id="stats">
+  <div class="sg reveal">
+    <div class="si tooltip-wrap"><span class="sn">12,847</span><span class="sl2">Humans Augmented</span><div class="tooltip">Active implants worldwide as of 2041</div></div>
+    <div class="si tooltip-wrap"><span class="sn">0.3ms</span><span class="sl2">Neural Response Time</span><div class="tooltip">40x faster than baseline human</div></div>
+    <div class="si tooltip-wrap"><span class="sn">99.7%</span><span class="sl2">Sync Accuracy</span><div class="tooltip">Verified across 12,847 subjects</div></div>
+    <div class="si tooltip-wrap"><span class="sn">∞</span><span class="sl2">Cognitive Potential</span><div class="tooltip">No theoretical upper limit detected</div></div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="stag reveal">Core Augmentations</div>
+  <h2 class="stitle reveal">Redefine<br><em>Human Limits</em></h2>
+  <p class="ssub reveal">Three core systems that transform what it means to be human.</p>
+  <div class="fg">
+    <div class="fc reveal"><div class="fi">🧠</div><div class="fn">// AUG-01</div><h3 class="fh">CortexSync™ Neural Interface</h3><p class="fd">Direct brain-to-machine communication. Access any digital system through thought alone. No hardware. No delays. Pure intent becomes action.</p><div class="fs">10TB/s Thought-Transfer Speed</div></div>
+    <div class="fc reveal"><div class="fi">⚡</div><div class="fn">// AUG-02</div><h3 class="fh">ReflexNet™ Motor Override</h3><p class="fd">Intercept, accelerate, and amplify motor signals at the spinal level. Achieve reflexes 40x faster than baseline human — the difference between survival and erasure.</p><div class="fs">40x Faster Motor Response</div></div>
+    <div class="fc reveal"><div class="fi">👁️</div><div class="fn">// AUG-03</div><h3 class="fh">OmniVision™ Optic Array</h3><p class="fd">Replace standard human vision with a 360° field-of-view optic system. See in infrared, UV, and tactical overlays. Never be blind-sided again.</p><div class="fs">360° Full Spectrum Vision</div></div>
+  </div>
+</section>
+
+<section id="about">
+  <div class="ai">
+    <div class="av reveal"><div class="cr r1"></div><div class="cr r2"></div><div class="cr r3"></div><div class="ac"><div class="acn">N7</div><div class="acl">// Core Active</div></div></div>
+    <div class="at reveal">
+      <div class="stag">Our Mission</div>
+      <h2 class="stitle">The <em>NEXUS</em><br>Initiative</h2>
+      <p>Founded in 2041 by a team of rogue neuroscientists and ex-DARPA engineers, NEXUS Corp emerged from one conviction: humanity's biological ceiling is a design flaw, not a destiny.</p>
+      <p>NEXUS-7 is our seventh generation neural architecture — the first stable, commercially viable brain-computer fusion system in history.</p>
+      <ul class="al">
+        <li>Nano-scale titanium electrode array — 0 biological rejection</li>
+        <li>Wireless firmware updates via encrypted neural uplink</li>
+        <li>Operates 24/7 — powered by body heat</li>
+        <li>Fully reversible extraction within 72 hours</li>
+        <li>Military-grade encryption on all thought data</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="specs">
+  <div class="stag reveal">Technical Data</div>
+  <h2 class="stitle reveal">System <em>Specifications</em></h2>
+  <div class="spg reveal">
+    <div class="spr"><span class="spk">Implant Dimensions</span><span class="spv">4.2mm × 2.1mm</span></div>
+    <div class="spr"><span class="spk">Neural Bandwidth</span><span class="spv">10 TB/s</span></div>
+    <div class="spr"><span class="spk">Processing Core</span><span class="spv">NeuroASIC X7</span></div>
+    <div class="spr"><span class="spk">Power Source</span><span class="spv">Bioheat Harvesting</span></div>
+    <div class="spr"><span class="spk">Latency</span><span class="spv">0.3 milliseconds</span></div>
+    <div class="spr"><span class="spk">Encryption</span><span class="spv">AES-4096 Neural</span></div>
+    <div class="spr"><span class="spk">OS Compatibility</span><span class="spv">NeuOS 7.0+</span></div>
+    <div class="spr"><span class="spk">Warranty</span><span class="spv">Lifetime Neural</span></div>
+  </div>
+</section>
+
+<section id="cta">
+  <p class="cw2">⚠ Warning: Augmentation is Permanent</p>
+  <h2 class="ct reveal">Begin Your<br><span>Augmentation</span></h2>
+  <p class="csub reveal">Join 12,847 humans who chose to evolve.</p>
+  <div class="reveal"><button class="bp" style="font-size:0.8rem;padding:20px 60px;">Initialize NEXUS-7 Protocol</button></div>
+  <p class="cdisc">* NEXUS-7 is a fictional product created for design demonstration purposes. No actual neural augmentation technology is offered or implied.</p>
+</section>
+
+<footer>
+  <div class="fl">NEXUS<span>-7</span></div>
+  <ul class="flk">
+    <li><a href="#">Neural Ethics</a></li>
+    <li><a href="#">Privacy Protocol</a></li>
+    <li><a href="#">Augmentation FAQ</a></li>
+    <li><a href="#">Contact</a></li>
+  </ul>
+  <div class="social-icons">
+    <a href="#" class="sicon" title="Twitter/X">✕</a>
+    <a href="#" class="sicon" title="Instagram">◈</a>
+    <a href="#" class="sicon" title="LinkedIn">in</a>
+    <a href="#" class="sicon" title="GitHub">⌥</a>
+  </div>
+  <p class="fc2">© 2041 NEXUS CORP. ALL RIGHTS RESERVED.</p>
+</footer>
+
+<script>
+// ── AUDIO CONTEXT FOR HOVER BEEP ──
+let audioCtx = null;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+function playBeep(freq=800,dur=0.06,vol=0.08){
+  try{
+    if(!audioCtx)return;
+    const o=audioCtx.createOscillator();const g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.frequency.value=freq;o.type='square';
+    g.gain.setValueAtTime(vol,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+    o.start();o.stop(audioCtx.currentTime+dur);
+  }catch(e){}
+}
+document.addEventListener('click',initAudio,{once:true});
+document.addEventListener('keydown',initAudio,{once:true});
+
+// ── BOOT SCREEN ──
+const bootLines=[
+  {t:'NEXUS-7 NEURAL OS v7.0.3 — INITIALIZING...',d:300,s:null},
+  {t:'Loading cortex interface drivers...',d:600,s:'OK'},
+  {t:'Calibrating neural electrode array...',d:950,s:'OK'},
+  {t:'Establishing biometric sync...',d:1300,s:'OK'},
+  {t:'Scanning for hostile neural signatures...',d:1700,s:'CLEAR'},
+  {t:'Encrypting thought-data channel [AES-4096]...',d:2100,s:'OK'},
+  {t:'WARNING: Unknown organic detected. Proceed?',d:2500,s:'!!',w:true},
+  {t:'Override accepted. Continuing sequence...',d:2900,s:null},
+  {t:'Neural uplink bandwidth: 10 TB/s',d:3200,s:'OK'},
+  {t:'NEXUS-7 CORE ONLINE. WELCOME, CANDIDATE.',d:3600,s:null,hi:true},
+];
+const bterm=document.getElementById('bterm');
+bootLines.forEach(line=>{
+  setTimeout(()=>{
+    const d=document.createElement('div');d.className='boot-line';
+    const p=document.createElement('span');p.className='prompt';p.textContent='>';
+    const t=document.createElement('span');t.className='text';
+    t.style.color=line.hi?'#00f5ff':line.w?'#ff8800':'';
+    t.style.textShadow=line.hi?'0 0 10px #00f5ff':'';
+    t.textContent=line.t;d.appendChild(p);d.appendChild(t);
+    if(line.s){const s=document.createElement('span');s.className=line.w?'warn':'ok';s.textContent='['+line.s+']';d.appendChild(s);}
+    bterm.appendChild(d);bterm.scrollTop=bterm.scrollHeight;
+  },line.d);
+});
+setTimeout(()=>{
+  const bw=document.getElementById('bbarwrap');bw.classList.add('show');
+  const bf=document.getElementById('bfill');const bp2=document.getElementById('bpct');
+  let pct=0;const iv=setInterval(()=>{pct++;bf.style.width=pct+'%';bp2.textContent=pct+'%';
+    if(pct>=100){clearInterval(iv);setTimeout(()=>{document.getElementById('boot').classList.add('hide');setTimeout(()=>{document.getElementById('boot').remove();startTyping();},900);},400);}
+  },16);
+},3700);
+
+// ── TYPING EFFECT ──
+function startTyping(){
+  const texts=['The World\'s First Neural Augmentation Implant','Rewriting The Limits of Human Biology','Machine Precision. Human Soul.'];
+  let ti=0,ci=0,deleting=false;
+  const el=document.getElementById('typedText');
+  function type(){
+    const cur=texts[ti];
+    if(!deleting){
+      el.textContent=cur.slice(0,ci+1);ci++;
+      if(ci===cur.length){deleting=true;setTimeout(type,2000);return;}
+    }else{
+      el.textContent=cur.slice(0,ci-1);ci--;
+      if(ci===0){deleting=false;ti=(ti+1)%texts.length;}
+    }
+    setTimeout(type,deleting?40:80);
+  }
+  type();
+}
+
+// ── MATRIX RAIN ──
+const canvas=document.getElementById('mx');const ctx=canvas.getContext('2d');
+function rsz(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}rsz();
+window.addEventListener('resize',rsz);
+const chars='01アイウエオNEXUS7NEURAL';const fs=13;
+let cols=Math.floor(canvas.width/fs);let drops=Array(cols).fill(1);
+function dm(){
+  ctx.fillStyle='rgba(2,4,8,0.05)';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.font=fs+'px monospace';
+  for(let i=0;i<drops.length;i++){
+    const c=chars[Math.floor(Math.random()*chars.length)];
+    ctx.globalAlpha=Math.random()*0.8+0.2;
+    ctx.fillStyle=Math.random()>0.97?'#00f5ff':'#00ff88';
+    ctx.fillText(c,i*fs,drops[i]*fs);
+    if(drops[i]*fs>canvas.height&&Math.random()>0.975)drops[i]=0;
+    drops[i]++;
+  }ctx.globalAlpha=1;
+}setInterval(dm,45);
+window.addEventListener('resize',()=>{cols=Math.floor(canvas.width/fs);drops=Array(cols).fill(1);});
+
+// ── PARTICLE CONNECTIONS ──
+const pc=document.getElementById('particleCanvas');
+const pctx=pc.getContext('2d');
+const hero=document.getElementById('hero');
+function resizePC(){pc.width=hero.offsetWidth;pc.height=hero.offsetHeight;}resizePC();
+window.addEventListener('resize',resizePC);
+let mouse={x:-999,y:-999};
+hero.addEventListener('mousemove',e=>{const r=hero.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;});
+hero.addEventListener('mouseleave',()=>{mouse.x=-999;mouse.y=-999;});
+const particles=Array.from({length:60},()=>({
+  x:Math.random()*window.innerWidth,y:Math.random()*600,
+  vx:(Math.random()-0.5)*0.4,vy:(Math.random()-0.5)*0.4,
+  r:Math.random()*2+1
+}));
+function drawParticles(){
+  pctx.clearRect(0,0,pc.width,pc.height);
+  particles.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0||p.x>pc.width)p.vx*=-1;
+    if(p.y<0||p.y>pc.height)p.vy*=-1;
+    pctx.beginPath();pctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    pctx.fillStyle='rgba(0,245,255,0.5)';pctx.fill();
+    const dx=p.x-mouse.x;const dy=p.y-mouse.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<180){
+      pctx.beginPath();pctx.moveTo(p.x,p.y);pctx.lineTo(mouse.x,mouse.y);
+      pctx.strokeStyle=`rgba(0,245,255,${0.3*(1-dist/180)})`;
+      pctx.lineWidth=0.5;pctx.stroke();
+    }
+    particles.forEach(p2=>{
+      const dx2=p.x-p2.x;const dy2=p.y-p2.y;const d2=Math.sqrt(dx2*dx2+dy2*dy2);
+      if(d2<100){
+        pctx.beginPath();pctx.moveTo(p.x,p.y);pctx.lineTo(p2.x,p2.y);
+        pctx.strokeStyle=`rgba(0,245,255,${0.1*(1-d2/100)})`;
+        pctx.lineWidth=0.3;pctx.stroke();
+      }
+    });
+  });
+  requestAnimationFrame(drawParticles);
+}drawParticles();
+
+// ── CURSOR ──
+const cur=document.getElementById('cursor');const cd=document.getElementById('cdot');
+document.addEventListener('mousemove',e=>{cur.style.left=e.clientX+'px';cur.style.top=e.clientY+'px';cd.style.left=e.clientX+'px';cd.style.top=e.clientY+'px';});
+document.querySelectorAll('button,a,.sicon').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.transform='translate(-50%,-50%) scale(2)';playBeep(1200,0.04,0.05);});
+  el.addEventListener('mouseleave',()=>cur.style.transform='translate(-50%,-50%) scale(1)');
+});
+
+// ── HAMBURGER MENU ──
+const ham=document.getElementById('hamburger');const mob=document.getElementById('mobileMenu');
+ham.addEventListener('click',()=>{ham.classList.toggle('open');mob.classList.toggle('open');});
+document.querySelectorAll('.mob-link').forEach(a=>{
+  a.addEventListener('click',()=>{ham.classList.remove('open');mob.classList.remove('open');triggerGlitch();});
+});
+
+// ── GLITCH ON NAV CLICK ──
+const glitchOverlay=document.getElementById('glitchOverlay');
+function triggerGlitch(){
+  glitchOverlay.classList.remove('flash');
+  void glitchOverlay.offsetWidth;
+  glitchOverlay.classList.add('flash');
+  playBeep(200,0.1,0.05);
+}
+document.querySelectorAll('.nav-link').forEach(a=>{
+  a.addEventListener('click',triggerGlitch);
+});
+
+// ── ACTIVE NAV HIGHLIGHT ──
+const sections=['hero','features','about','specs','cta'];
+const navLinks=document.querySelectorAll('.nav-link');
+const sectionObs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      navLinks.forEach(l=>l.classList.remove('active'));
+      const active=document.querySelector(`.nav-link[data-section="${e.target.id}"]`);
+      if(active)active.classList.add('active');
+    }
+  });
+},{threshold:0.4});
+sections.forEach(id=>{const el=document.getElementById(id);if(el)sectionObs.observe(el);});
+
+// ── SCROLL REVEAL ──
+const revs=document.querySelectorAll('.reveal');
+const obs=new IntersectionObserver(entries=>{entries.forEach((e,i)=>{if(e.isIntersecting)setTimeout(()=>e.target.classList.add('visible'),i*80);});},{threshold:0.1});
+revs.forEach(el=>obs.observe(el));
+
+// ── STAT COUNTERS ──
+function ac(el,target,suf=''){
+  if(target==='∞'){el.textContent='∞';return;}
+  const nt=parseFloat(target.replace(/[^0-9.]/g,''));let st=null;
+  const step=ts=>{if(!st)st=ts;const p=Math.min((ts-st)/2000,1);const e2=1-Math.pow(1-p,3);
+    el.textContent=(target.includes('.')?(e2*nt).toFixed(1):Math.floor(e2*nt).toLocaleString())+suf;
+    if(p<1)requestAnimationFrame(step);else el.textContent=target;};
+  requestAnimationFrame(step);
+}
+const sobs=new IntersectionObserver(entries=>{
+  if(entries[0].isIntersecting){
+    const ns=document.querySelectorAll('.sn');
+    ac(ns[0],'12847','');ac(ns[1],'0.3','ms');ac(ns[2],'99.7','%');ac(ns[3],'∞','');
+    sobs.disconnect();}},{threshold:0.5});
+sobs.observe(document.getElementById('stats'));
+</script>
+</body>
+</html>
